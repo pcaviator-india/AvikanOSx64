@@ -7,7 +7,6 @@ header_start:
 
 section .text align=4
     global EntryPoint
-    extern kernel_main
     extern gdt_flush
 
 EntryPoint:
@@ -20,67 +19,46 @@ EntryPoint:
     mov byte [0xB8000], 'A'
     mov byte [0xB8001], 0x07
 
-    ; ===== LONG MODE SWITCH =====
+    ; ===== LONG MODE SWITCH (Minimal) =====
 
-    ; Step 1: Load GDTR
+    ; Step 1: Load GDTR (loads our GDT with 64-bit code segment at 0x28)
     call gdt_flush
 
     ; Write '1' to confirm GDT loaded
     mov byte [0xB8002], '1'
     mov byte [0xB8003], 0x07
 
-    ; Step 2: Set up 4-level paging structures
-    ; PML4 at 0x1000, PDP at 0x2000, PD at 0x3000
-
-    ; PML4 entry 0 → PDP (present, read/write, address 0x2000)
-    mov dword [0x1000], 0x2007
-    mov dword [0x1004], 0
-
-    ; PDP entry 0 → PD (present, read/write, address 0x3000)
-    mov dword [0x2000], 0x3007
-    mov dword [0x2004], 0
-
-    ; PD entry 0 → 2MB huge page identity mapped
-    mov dword [0x3000], 0x00000083
-    mov dword [0x3004], 0
-
-    ; Step 3: Load CR3 with PML4 physical address
-    mov eax, 0x1000
-    mov cr3, eax
-
-    ; Step 4: Enable PAE in CR4
+    ; Step 2: Enable PAE
     mov eax, cr4
     or eax, 1 << 5
     mov cr4, eax
 
-    ; Write '4' to confirm PAE enabled
+    ; Write '4' to confirm PAE
     mov byte [0xB8004], '4'
     mov byte [0xB8005], 0x07
 
-    ; Step 5: Enable Long Mode in EFER MSR
+    ; Step 3: Enable Long Mode in EFER
     mov ecx, 0xC0000080
     rdmsr
     or eax, 1 << 8
     wrmsr
 
-    ; Write '5' to confirm LME set
+    ; Write '5' to confirm LME
     mov byte [0xB8006], '5'
     mov byte [0xB8007], 0x07
 
-    ; Step 6: Enable Paging in CR0
-    mov eax, cr0
-    or eax, 1 << 31
-    mov cr0, eax
+    ; Step 4: Far jump to 64-bit code WITHOUT paging, without segment reloads
+    db 0xEA
+    dd .long_mode
+    dw 0x28
 
-    ; Write '6' to confirm paging enabled
+bits 64
+.long_mode:
+    ; We are now in 64-bit long mode!
+    ; Write '6' to confirm 64-bit mode
     mov byte [0xB8008], '6'
     mov byte [0xB8009], 0x07
 
-    ; Step 7: Call kernel_main in 32-bit mode with paging enabled
-    ; Long mode (64-bit) far jump will be added in next phase
-    call kernel_main
-
-    ; If kernel_main returns, halt
     cli
     hlt
     jmp $
