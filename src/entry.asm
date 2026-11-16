@@ -69,10 +69,20 @@ EntryPoint:
     mov byte [0xB8008], '6'
     mov byte [0xB8009], 0x07
 
-    ; Step 7: Call kernel_main in 32-bit mode with paging enabled
-    call kernel_main
+    ; Step 7: Far jump to 64-bit long mode code segment
+    ; The 64-bit code segment is GDT entry [5], selector = 0x28
+    ; Use explicit far jump opcode for reliability
+    db 0xEA                      ; JMP FAR ptr16:32 opcode
+    dd .long_mode                ; 32-bit offset to .long_mode label
+    dw 0x28                      ; segment selector (16-bit)
 
-    ; If kernel_main returns, halt
+bits 64
+.long_mode:
+    ; We are now in 64-bit long mode!
+    ; Write '7' to confirm we made it to long mode
+    mov byte [0xB800A], '7'
+    mov byte [0xB800B], 0x07
+
     cli
     hlt
     jmp $
