@@ -9,9 +9,9 @@ void kernel_main(void) {
     terminal_init();
 
     /* Print welcome message */
-    terminal_print("AvikanOS-x64 v0.02\n");
-    terminal_print("Phase 2: Kernel Foundation\n");
-    terminal_print("--------------------------\n");
+    terminal_print("AvikanOS-x64 v0.03\n");
+    terminal_print("Phase 3: GDT Reload Test\n");
+    terminal_print("------------------------\n");
 
     /* Initialize GDT */
     terminal_print("Initializing GDT... ");

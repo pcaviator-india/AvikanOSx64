@@ -86,7 +86,7 @@ void gdt_init(void) {
     gdt_flush((unsigned long long)&gp);
 }
 
-/* GDT Flush - loads GDTR register only (no segment reload) */
+/* GDT Flush - loads GDTR register only (segment reload done in entry.asm) */
 void gdt_flush(unsigned long long gdt_ptr) {
     __asm__ volatile ("lgdt %0" : /* no output */ : "m" (gdt_ptr));
 }

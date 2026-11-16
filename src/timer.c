@@ -21,9 +21,12 @@ static inline void outb(unsigned short port, unsigned char val) {
 /* Handle IRQ0 (timer interrupt) - called from assembly wrapper */
 void irq0_handler_c(void) {
     timer_ticks++;
-    /* Send EOI to PIC (Programmable Interrupt Controller) */
+    /* Send EOI to PIC */
     outb(0x20, 0x20);
 }
+
+/* Forward declaration - ISR wrapper defined in entry.asm */
+extern void irq0_wrapper(void);
 
 /* Forward declaration */
 void idt_set_gate(unsigned char num, unsigned long long base, unsigned short selector, unsigned char flags);
@@ -38,6 +41,6 @@ void timer_init(void) {
     outb(PIT_CHANNEL0, (unsigned char)(divisor & 0xFF));
     outb(PIT_CHANNEL0, (unsigned char)((divisor >> 8) & 0xFF));
 
-    /* Set gate in IDT for IRQ0 */
-    idt_set_gate(0x20, (unsigned long long)irq0_handler_c, 0x08, 0x8E);
+    /* Set gate in IDT for IRQ0 - use assembly wrapper, not C function directly */
+    idt_set_gate(0x20, (unsigned long long)irq0_wrapper, 0x08, 0x8E);
 }

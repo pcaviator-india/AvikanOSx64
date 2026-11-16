@@ -8,6 +8,7 @@ header_start:
 section .text align=4
     global EntryPoint
     extern kernel_main
+    extern gdt_flush
 
 EntryPoint:
     cli
@@ -19,7 +20,10 @@ EntryPoint:
     mov byte [0xB8000], 'A'
     mov byte [0xB8001], 0x07
 
-    ; Call C kernel main
+    ; Load GDTR (just lgdt, no segment reload yet - GRUB's segments still valid)
+    call gdt_flush
+
+    ; Call kernel_main with GRUB's segments
     call kernel_main
 
     ; If kernel_main returns, halt
