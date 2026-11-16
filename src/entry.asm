@@ -7,13 +7,22 @@ header_start:
 
 section .text align=4
     global EntryPoint
+    extern kernel_main
 
 EntryPoint:
     cli
 
-    ; Write 'A' to VGA text mode at 0xB8000 (assume ES base=0 from GRUB)
+    ; Set up stack at 0x90000
+    mov esp, 0x90000
+
+    ; Write 'A' to VGA text mode at 0xB8000
     mov byte [0xB8000], 'A'
     mov byte [0xB8001], 0x07
 
+    ; Call C kernel main
+    call kernel_main
+
+    ; If kernel_main returns, halt
+    cli
     hlt
     jmp $
