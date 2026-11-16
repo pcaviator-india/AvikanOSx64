@@ -7,7 +7,6 @@ header_start:
 
 section .text align=4
     global EntryPoint
-    extern kernel_main
     extern gdt_flush
 
 EntryPoint:
@@ -22,51 +21,70 @@ EntryPoint:
 
     ; ===== LONG MODE SWITCH =====
 
-    ; Step 1: Load GDTR (we keep GRUB's segments for now)
+    ; Step 1: Load GDTR
     call gdt_flush
 
+    ; Reload data segments with new GDT selectors
+    mov ax, 0x10                   ; Kernel data segment selector
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
+    ; Write '1' to confirm GDT loaded + segments reloaded
+    mov byte [0xB8002], '1'
+    mov byte [0xB8003], 0x07
+
     ; Step 2: Set up 4-level paging structures
-    ; PML4 at 0x1000, PDP at 0x2000, PD at 0x3000, PT at 0x4000
-    
-    ; PML4 entry 0 → PDP (present, read/write, address 0x2000)
-    mov dword [0x1000], 0x2007   ; Low 32 bits: addr 0x2000 | flags 0x7
-    mov dword [0x1004], 0        ; High 32 bits: 0
+    mov dword [0x1000], 0x2007     ; PML4[0] → PDP
+    mov dword [0x1004], 0
+    mov dword [0x2000], 0x3007     ; PDP[0] → PD
+    mov dword [0x2004], 0
+    mov dword [0x3000], 0x00000083 ; PD[0] → 2MB huge page (identity)
+    mov dword [0x3004], 0
 
-    ; PDP entry 0 → PD (present, read/write, address 0x3000)
-    mov dword [0x2000], 0x3007   ; Low 32 bits: addr 0x3000 | flags 0x7
-    mov dword [0x2004], 0        ; High 32 bits: 0
-
-    ; PD entry 0 → 2MB huge page identity mapped (present, read/write, 2MB page)
-    ; Address 0x000000, flags: Present(1) | RW(1) | User(0) | PWT(0) | PCD(0) | A(0) | D(0) | PS(1) | G(0)
-    ; For 2MB huge page: bits 21-31 = physical address bits 21-31, bit 7 = PS (page size)
-    mov dword [0x3000], 0x00000083  ; Low 32 bits: addr 0 | flags 0x83 (Present+RW+PS)
-    mov dword [0x3004], 0           ; High 32 bits: 0
-
-    ; Step 3: Load CR3 with PML4 physical address
+    ; Step 3: Load CR3
     mov eax, 0x1000
     mov cr3, eax
 
-    ; Step 4: Enable PAE (Physical Address Extension) in CR4
+    ; Step 4: Enable PAE
     mov eax, cr4
-    or eax, 1 << 5               ; Set PAE bit (bit 5)
+    or eax, 1 << 5
     mov cr4, eax
 
-    ; Step 5: Enable Long Mode in EFER MSR (0xC0000080)
-    mov ecx, 0xC0000080          ; EFER MSR
-    rdmsr                        ; Read EFER
-    or eax, 1 << 8               ; Set LME bit (bit 8) - Long Mode Enable
-    wrmsr                        ; Write EFER
+    ; Write '4' to confirm PAE
+    mov byte [0xB8004], '4'
+    mov byte [0xB8005], 0x07
 
-    ; Step 6: Enable Paging in CR0
+    ; Step 5: Enable Long Mode in EFER
+    mov ecx, 0xC0000080
+    rdmsr
+    or eax, 1 << 8
+    wrmsr
+
+    ; Write '5' to confirm LME
+    mov byte [0xB8006], '5'
+    mov byte [0xB8007], 0x07
+
+    ; Step 6: Enable Paging
     mov eax, cr0
-    or eax, 1 << 31              ; Set PG bit (bit 31)
+    or eax, 1 << 31
     mov cr0, eax
 
-    ; Step 7: Call kernel_main in 32-bit mode with paging enabled
-    ; Long mode (64-bit) far jump will be added in next phase
-    call kernel_main
+    ; Write '6' to confirm paging
+    mov byte [0xB8008], '6'
+    mov byte [0xB8009], 0x07
 
-    ; If kernel_main returns, halt
+    ; Step 7: Far jump to 64-bit code
+    jmp 0x28:.long_mode
+
+bits 64
+.long_mode:
+    ; Write '7' to confirm 64-bit mode
+    mov byte [0xB800A], '7'
+    mov byte [0xB800B], 0x07
+
     cli
     hlt
     jmp $
