@@ -9,15 +9,16 @@ void kernel_main(void) {
     terminal_init();
 
     /* Print welcome message */
-    terminal_print("AvikanOS-x64 v0.03\n");
-    terminal_print("Phase 3: GDT Reload Test\n");
-    terminal_print("------------------------\n");
+    terminal_print("AvikanOS-x64 v0.04\n");
+    terminal_print("Phase 4: Long Mode (x86-64)\n");
+    terminal_print("---------------------------\n");
 
     /* Initialize GDT */
     terminal_print("Initializing GDT... ");
     gdt_init();
     terminal_print("OK\n");
 
+    terminal_print("Long mode setup complete\n");
     terminal_print("Kernel ready. System running...\n");
 
     /* Halt forever */
