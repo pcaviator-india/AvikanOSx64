@@ -62,9 +62,8 @@ EntryPoint:
     or eax, 1 << 31              ; Set PG bit (bit 31)
     mov cr0, eax
 
-    ; Step 7: Far jump to 64-bit code segment
-    ; We need a 64-bit code segment descriptor in GDT first
-    ; For now, just call kernel_main in 32-bit mode with paging enabled
+    ; Step 7: Call kernel_main in 32-bit mode with paging enabled
+    ; Long mode (64-bit) far jump will be added in next phase
     call kernel_main
 
     ; If kernel_main returns, halt

@@ -21,14 +21,15 @@ struct gdt_pointer {
 
 /* GDT Entries:
  *  [0]  = NULL descriptor
- *  [1]  = Code segment (execute/read, 4KB pages, privilege 0)
- *  [2]  = Data segment (read/write, 4KB pages, privilege 0)
- *  [3]  = Code segment (for privilege 3)
- *  [4]  = Data segment (for privilege 3)
+ *  [1]  = Code segment (32-bit, execute/read, 4KB pages, privilege 0)
+ *  [2]  = Data segment (32-bit, read/write, 4KB pages, privilege 0)
+ *  [3]  = Code segment (32-bit, for privilege 3)
+ *  [4]  = Data segment (32-bit, for privilege 3)
+ *  [5]  = Code segment (64-bit long mode, execute/read, privilege 0)
  */
 
 /* Null descriptor (must be all zeros) */
-struct gdt_entry gdt[5];
+struct gdt_entry gdt[6];
 struct gdt_pointer gp;
 
 /* Forward declaration */
@@ -81,7 +82,15 @@ void gdt_init(void) {
     gdt[4].access = 0x92;              /* Present, Ring3, Write, Read */
     gdt[4].granularity = 0xCF;
     gdt[4].base_high = 0;
-    
+
+    /* Code Segment Descriptor (64-bit long mode, kernel, privilege 0) */
+    gdt[5].limit_low = 0xFFFF;
+    gdt[5].base_low = 0;
+    gdt[5].base_middle = 0;
+    gdt[5].access = 0x9A;
+    gdt[5].granularity = 0xA0;
+    gdt[5].base_high = 0;
+
     /* Load GDT into CPU */
     gdt_flush((unsigned long long)&gp);
 }

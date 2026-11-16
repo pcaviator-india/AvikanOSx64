@@ -18,7 +18,9 @@ void kernel_main(void) {
     gdt_init();
     terminal_print("OK\n");
 
-    terminal_print("Long mode setup complete\n");
+    terminal_print("Paging enabled (PAE + LME + PG)\n");
+    terminal_print("Running in 32-bit compatibility mode\n");
+    terminal_print("Long mode far jump: TODO\n");
     terminal_print("Kernel ready. System running...\n");
 
     /* Halt forever */
