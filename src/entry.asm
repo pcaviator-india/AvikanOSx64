@@ -70,80 +70,31 @@ gdt_ptr:
 ;==============================================================================
 section .text align=4
     global EntryPoint
+    extern kernel_main
 
 bits 32
 EntryPoint:
     cli
 
-    ; Set up stack at 0x90000 (16-byte aligned for 64-bit)
+    ; Set up stack at 0x90000
     mov esp, 0x90000
 
-    ; Write 'A' to VGA text mode at 0xB8000
+    ; Write 'A' to VGA text mode at 0xB8000 (sanity check)
     mov byte [0xB8000], 'A'
     mov byte [0xB8001], 0x07
 
-    ; ===== LONG MODE SWITCH =====
-
-    ; Step 1: Load GDTR with 6-byte pseudo-descriptor
-    lgdt [gdt_ptr]
-
-    ; Write '1' to confirm GDT loaded
-    mov byte [0xB8002], '1'
+    ; Write 'B' before calling kernel_main
+    mov byte [0xB8002], 'B'
     mov byte [0xB8003], 0x07
 
-    ; Step 2: Set up 4-level paging structures (identity-mapped)
-    ; PML4 at 0x1000, PDP at 0x2000, PD at 0x3000
-    mov dword [0x1000], 0x2007     ; PML4[0] → PDP (Present, RW)
-    mov dword [0x1004], 0
-    mov dword [0x2000], 0x3007     ; PDP[0] → PD (Present, RW)
-    mov dword [0x2004], 0
-    mov dword [0x3000], 0x00000083 ; PD[0] → 2MB huge page identity (Present, RW, Huge)
-    mov dword [0x3004], 0
+    ; Call kernel_main (runs in 32-bit protected mode)
+    call kernel_main
 
-    ; Step 3: Load CR3 with PML4 physical address
-    mov eax, 0x1000
-    mov cr3, eax
-
-    ; Step 4: Enable PAE in CR4
-    mov eax, cr4
-    or eax, 1 << 5
-    mov cr4, eax
-
-    ; Write '4' to confirm PAE enabled
-    mov byte [0xB8004], '4'
+    ; Write 'C' if kernel_main returns
+    mov byte [0xB8004], 'C'
     mov byte [0xB8005], 0x07
 
-    ; Step 5: Enable Long Mode in EFER MSR
-    mov ecx, 0xC0000080
-    rdmsr
-    or eax, 1 << 8
-    wrmsr
-
-    ; Write '5' to confirm LME set
-    mov byte [0xB8006], '5'
-    mov byte [0xB8007], 0x07
-
-    ; Step 6: Enable Paging in CR0 (this sets LMA=1 automatically)
-    mov eax, cr0
-    or eax, 1 << 31
-    mov cr0, eax
-
-    ; Write '6' to confirm paging enabled
-    mov byte [0xB8008], '6'
-    mov byte [0xB8009], 0x07
-
-    ; Step 7: Far jump to 64-bit long mode code segment
-    ; GDT entry [5] selector = 5 * 8 = 0x28
-    jmp 0x28:.long_mode_start
-
-bits 64
-.long_mode_start:
-    ; We are now in 64-bit long mode!
-    ; Write '7' to confirm we made it to long mode
-    mov byte [0xB800A], '7'
-    mov byte [0xB800B], 0x07
-
-    ; Halt in 64-bit mode
+    ; If kernel_main returns, halt forever
     cli
     hlt
     jmp $
