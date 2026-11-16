@@ -1,0 +1,54 @@
+/*------------------------------------------------------
+  timer.c - Programmable Interval Timer (PIT)
+  ------------------------------------------------------*/
+#include "timer.h"
+#include "idt.h"
+#include "terminal.h"
+
+/* PIT control port is at 0x43 */
+#define PIT_CONTROL 0x43
+/* PIT channel 0 data port is at 0x40 */
+#define PIT_CHANNEL0 0x40
+
+/* PIT frequency - 1193180 Hz (1.19 MHz) */
+#define PIT_FREQ 1193180
+
+/* Counter for timer ticks */
+static int timer_ticks = 0;
+
+/* Port I/O */
+static inline void outb(unsigned short port, unsigned char val) {
+    __asm__ volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
+}
+
+/* Handle IRQ0 (timer interrupt) */
+void irq0_handler(void) {
+    timer_ticks++;
+    
+    /* Every 18 ticks, print a dot */
+    if (timer_ticks % 18 == 0) {
+        terminal_putchar('.');
+    }
+    
+    /* Send EOI to PIC (Programmable Interrupt Controller) */
+    outb(0x20, 0x20);
+}
+
+/* Forward declaration */
+void idt_set_gate(unsigned char num, unsigned long long base, unsigned short selector, unsigned char flags);
+
+/* Initialize the PIT to generate interrupts at 100Hz */
+void timer_init(void) {
+    /* Calculate divisor for 100Hz (10ms ticks) */
+    unsigned long divisor = PIT_FREQ / 100;
+    
+    /* Send the divisor to PIT channel 0 */
+    /* Low byte first, then high byte */
+    outb(PIT_CHANNEL0, (unsigned char)(divisor & 0xFF));
+    outb(PIT_CHANNEL0, (unsigned char)((divisor >> 8) & 0xFF));
+    
+    /* Set gate in IDT for IRQ0 */
+    idt_set_gate(0x20, (unsigned long long)irq0_handler, 0x08, 0x8E);
+    
+    terminal_print(" Timer initialized at 100Hz");
+}
