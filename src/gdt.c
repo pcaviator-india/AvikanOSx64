@@ -28,74 +28,77 @@ struct gdt_pointer {
  *  [5]  = Code segment (64-bit long mode, execute/read, privilege 0)
  */
 
-/* Null descriptor (must be all zeros) */
-struct gdt_entry gdt[6];
-struct gdt_pointer gp;
+/* GDT Entries - defined in entry.asm (must be in identity-mapped range) */
+extern struct gdt_entry gdt_start[6];
+extern struct {
+    unsigned short limit;
+    unsigned int base;
+} gdt_ptr;
 
 /* Forward declaration */
-void gdt_flush(unsigned long long gdt_ptr);
+void gdt_flush(void);
 
 /* Initialize GDT */
 void gdt_init(void) {
-    /* Set up the GDT pointer - null entry + 3 code/data segments */
-    gp.limit = sizeof(gdt) - 1;
-    gp.base  = (unsigned long long)&gdt;
+    /* Set up the GDT pointer */
+    gdt_ptr.limit = sizeof(gdt_start) - 1;
+    gdt_ptr.base  = (unsigned int)&gdt_start;
     
     /* Null descriptor */
-    gdt[0].limit_low = 0;
-    gdt[0].base_low = 0;
-    gdt[0].base_middle = 0;
-    gdt[0].access = 0;
-    gdt[0].granularity = 0;
-    gdt[0].base_high = 0;
-    
+    gdt_start[0].limit_low = 0;
+    gdt_start[0].base_low = 0;
+    gdt_start[0].base_middle = 0;
+    gdt_start[0].access = 0;
+    gdt_start[0].granularity = 0;
+    gdt_start[0].base_high = 0;
+
     /* Code Segment Descriptor (Kernel mode, privilege 0) */
     /* Base = 0, Limit = 4GB (4KB pages × 1M entries), 64-bit code segment */
-    gdt[1].limit_low = 0xFFFF;         /* Limit 0-15 bits */
-    gdt[1].base_low = 0;               /* Base 0-15 bits */
-    gdt[1].base_middle = 0;            /* Base 16-23 bits */
-    gdt[1].access = 0x9A;              /* Present, Ring0, Exec, Read */
+    gdt_start[1].limit_low = 0xFFFF;         /* Limit 0-15 bits */
+    gdt_start[1].base_low = 0;               /* Base 0-15 bits */
+    gdt_start[1].base_middle = 0;            /* Base 16-23 bits */
+    gdt_start[1].access = 0x9A;              /* Present, Ring0, Exec, Read */
     /* 64-bit code segment flag in granularity, plus 32-bit segment */
-    gdt[1].granularity = 0xCF;         /* 4KB pages, 32-bit, Granularity */
-    gdt[1].base_high = 0;              /* Base 32-39 bits */
-    
+    gdt_start[1].granularity = 0xCF;         /* 4KB pages, 32-bit, Granularity */
+    gdt_start[1].base_high = 0;              /* Base 32-39 bits */
+
     /* Data Segment Descriptor (Kernel mode, privilege 0) */
-    gdt[2].limit_low = 0xFFFF;
-    gdt[2].base_low = 0;
-    gdt[2].base_middle = 0;
-    gdt[2].access = 0x92;              /* Present, Ring0, Write, Read */
-    gdt[2].granularity = 0xCF;         /* 4KB pages, 32-bit, Granularity */
-    gdt[2].base_high = 0;
-    
+    gdt_start[2].limit_low = 0xFFFF;
+    gdt_start[2].base_low = 0;
+    gdt_start[2].base_middle = 0;
+    gdt_start[2].access = 0x92;              /* Present, Ring0, Write, Read */
+    gdt_start[2].granularity = 0xCF;         /* 4KB pages, 32-bit, Granularity */
+    gdt_start[2].base_high = 0;
+
     /* Code Segment Descriptor (User mode, privilege 3) */
-    gdt[3].limit_low = 0xFFFF;
-    gdt[3].base_low = 0;
-    gdt[3].base_middle = 0;
-    gdt[3].access = 0x9A;              /* Present, Ring3, Exec, Read */
-    gdt[3].granularity = 0xCF;
-    gdt[3].base_high = 0;
-    
+    gdt_start[3].limit_low = 0xFFFF;
+    gdt_start[3].base_low = 0;
+    gdt_start[3].base_middle = 0;
+    gdt_start[3].access = 0x9A;              /* Present, Ring3, Exec, Read */
+    gdt_start[3].granularity = 0xCF;
+    gdt_start[3].base_high = 0;
+
     /* Data Segment Descriptor (User mode, privilege 3) */
-    gdt[4].limit_low = 0xFFFF;
-    gdt[4].base_low = 0;
-    gdt[4].base_middle = 0;
-    gdt[4].access = 0x92;              /* Present, Ring3, Write, Read */
-    gdt[4].granularity = 0xCF;
-    gdt[4].base_high = 0;
+    gdt_start[4].limit_low = 0xFFFF;
+    gdt_start[4].base_low = 0;
+    gdt_start[4].base_middle = 0;
+    gdt_start[4].access = 0x92;              /* Present, Ring3, Write, Read */
+    gdt_start[4].granularity = 0xCF;
+    gdt_start[4].base_high = 0;
 
     /* Code Segment Descriptor (64-bit long mode, kernel, privilege 0) */
-    gdt[5].limit_low = 0xFFFF;
-    gdt[5].base_low = 0;
-    gdt[5].base_middle = 0;
-    gdt[5].access = 0x9A;
-    gdt[5].granularity = 0xA0;
-    gdt[5].base_high = 0;
+    gdt_start[5].limit_low = 0xFFFF;
+    gdt_start[5].base_low = 0;
+    gdt_start[5].base_middle = 0;
+    gdt_start[5].access = 0x9A;
+    gdt_start[5].granularity = 0xA0;
+    gdt_start[5].base_high = 0;
 
     /* Load GDT into CPU */
-    gdt_flush((unsigned long long)&gp);
+    gdt_flush();
 }
 
-/* GDT Flush - loads GDTR register only (segment reload done in entry.asm) */
-void gdt_flush(unsigned long long gdt_ptr) {
+/* GDT Flush - loads GDTR register with our GDT */
+void gdt_flush(void) {
     __asm__ volatile ("lgdt %0" : /* no output */ : "m" (gdt_ptr));
 }

@@ -1,26 +1,24 @@
 /*------------------------------------------------------
-  kernel.c - Main Kernel Entry Point
+  kernel.c - Main Kernel Entry Point (64-bit)
   ------------------------------------------------------*/
 #include "terminal.h"
 #include "gdt.h"
 
-void kernel_main(void) {
+void kernel_main_64(void) {
     /* Initialize terminal */
     terminal_init();
 
     /* Print welcome message */
-    terminal_print("AvikanOS-x64 v0.04\n");
-    terminal_print("Phase 4: Long Mode (x86-64)\n");
-    terminal_print("---------------------------\n");
+    terminal_print("AvikanOS-x64 v0.05\n");
+    terminal_print("Phase 5: 64-bit Kernel\n");
+    terminal_print("----------------------\n");
 
     /* Initialize GDT */
     terminal_print("Initializing GDT... ");
     gdt_init();
     terminal_print("OK\n");
 
-    terminal_print("Paging enabled (PAE + LME + PG)\n");
-    terminal_print("Running in 32-bit compatibility mode\n");
-    terminal_print("Long mode far jump: TODO\n");
+    terminal_print("Running in 64-bit long mode\n");
     terminal_print("Kernel ready. System running...\n");
 
     /* Halt forever */
